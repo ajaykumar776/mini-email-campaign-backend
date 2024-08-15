@@ -1,15 +1,23 @@
 <?php
+
 namespace App\Jobs;
 
 use App\Models\Campaign;
 use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
-class SendCampaignEmail
+class SendCampaignEmail implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
     protected $campaign;
     protected $userId;
     protected $chunkSize;
@@ -35,6 +43,7 @@ class SendCampaignEmail
                 Log::error('CSV file is empty or invalid', ['campaign_id' => $this->campaign->id]);
                 return;
             }
+
             $this->campaign->update(['status' => 'in_progress']);
             $processedLines = $this->processCsvLines($lines);
 
@@ -120,9 +129,15 @@ class SendCampaignEmail
     protected function sendEmail($name, $email)
     {
         Mail::send('emails.campaign_template', ['username' => $name], function ($message) use ($email) {
-            $message->to($email)->subject('Campaign Email');
+            $message->to($email)
+                    ->subject('Campaign Email')
+                    ->attach(public_path('15august.jpeg'), [
+                        'as' => '15-august.jpeg',
+                        'mime' => 'image/jpeg',
+                    ]);
         });
     }
+    
 
     protected function isCampaignProcessed($processedLines, $totalLines)
     {
@@ -145,6 +160,5 @@ class SendCampaignEmail
     {
         Log::error('Error processing campaign', ['error' => $e->getMessage()]);
         $this->campaign->update(['status' => 'failed']);
-        throw $e;
     }
 }

@@ -15,5 +15,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/campaigns', [CampaignController::class, 'index']);
     Route::delete('/campaigns/{campaignId}', [CampaignController::class, 'deleteCampaign']);
     Route::get('/campaigns/{campaignId}', [CampaignController::class, 'getStatus']);
+    Route::post('/campaigns/{campaignId}/process', [CampaignController::class, 'processCampaign']);
+
 });
 

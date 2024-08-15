@@ -28,11 +28,13 @@ class CampaignController extends Controller
                 'status' => 'pending',
             ]);
 
+            // Dispatch the job asynchronously
+            // return dispatch(new SendCampaignEmail($campaign, $campaign->user_id));
+
             return response()->json([
                 'message' => 'Campaign is being processed. You will be notified via email once the campaign is done.',
                 'campaign_id' => $campaign->id
             ]);
-
         } catch (Exception $e) {
             return response()->json(['error' => 'Failed to create campaign'], 500);
         }
@@ -44,11 +46,11 @@ class CampaignController extends Controller
             $campaigns = $request->user()->campaigns()->get();
 
             return response()->json(['campaigns' => $campaigns]);
-
         } catch (Exception $e) {
             return response()->json(['error' => 'Failed to fetch campaigns'], 500);
         }
     }
+
     public function deleteCampaign(Request $request, $campaignId)
     {
         try {
@@ -75,7 +77,7 @@ class CampaignController extends Controller
         try {
             $user = $request->user();
             $campaign = Campaign::where('id', $campaignId)->where('user_id', $user->id)->firstOrFail();
-            
+
             return response()->json(['status' => $campaign->status]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Campaign not found'], 404);
@@ -83,17 +85,38 @@ class CampaignController extends Controller
             return response()->json(['message' => 'Error fetching campaign status', 'error' => $e->getMessage()], 500);
         }
     }
-    
-    public function downloadFile($filePath)
-    {
-        if (!Storage::disk('public')->exists($filePath)) {
-            return response()->json(['error' => 'File not found.'], 404);
-        }
-        $file = Storage::disk('public')->get($filePath);
-        $fileName = basename($filePath);
 
-        return response($file, 200)
-            ->header('Content-Type', Storage::disk('public')->mimeType($filePath))
-            ->header('Content-Disposition', "attachment; filename={$fileName}");
+    // public function downloadFile($filePath)
+    // {
+    //     if (!Storage::disk('public')->exists($filePath)) {
+    //         return response()->json(['error' => 'File not found.'], 404);
+    //     }
+    //     $file = Storage::disk('public')->get($filePath);
+    //     $fileName = basename($filePath);
+
+    //     return response($file, 200)
+    //         ->header('Content-Type', Storage::disk('public')->mimeType($filePath))
+    //         ->header('Content-Disposition', "attachment; filename={$fileName}");
+    // }
+
+    public function processCampaign(Request $request, $campaignId)
+    {
+        try {
+            $campaign = Campaign::where('id', $campaignId)
+                ->where('user_id', $request->user()->id)
+                ->firstOrFail();
+
+            // Dispatch the job
+            dispatch(new SendCampaignEmail($campaign, $request->user()->id));
+
+            return response()->json([
+                'message' => 'Campaign processing has started.',
+                'campaign_id' => $campaign->id
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Campaign not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error processing campaign', 'error' => $e->getMessage()], 500);
+        }
     }
 }
