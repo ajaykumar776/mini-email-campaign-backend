@@ -44,7 +44,6 @@ class SendCampaignEmail implements ShouldQueue
                 return;
             }
 
-            $this->campaign->update(['status' => 'in_progress']);
             $processedLines = $this->processCsvLines($lines);
 
             if ($this->isCampaignProcessed($processedLines, count($lines))) {
