@@ -27,10 +27,6 @@ class CampaignController extends Controller
                 'user_id' => $request->user()->id,
                 'status' => 'pending',
             ]);
-
-            // Dispatch the job asynchronously
-            // return dispatch(new SendCampaignEmail($campaign, $campaign->user_id));
-
             return response()->json([
                 'message' => 'Campaign is being processed. You will be notified via email once the campaign is done.',
                 'campaign_id' => $campaign->id
@@ -60,8 +56,6 @@ class CampaignController extends Controller
             if ($campaign->csv_file) {
                 Storage::delete($campaign->csv_file);
             }
-
-            // Delete the campaign
             $campaign->delete();
 
             return response()->json(['message' => 'Campaign deleted successfully']);
@@ -86,27 +80,13 @@ class CampaignController extends Controller
         }
     }
 
-    // public function downloadFile($filePath)
-    // {
-    //     if (!Storage::disk('public')->exists($filePath)) {
-    //         return response()->json(['error' => 'File not found.'], 404);
-    //     }
-    //     $file = Storage::disk('public')->get($filePath);
-    //     $fileName = basename($filePath);
-
-    //     return response($file, 200)
-    //         ->header('Content-Type', Storage::disk('public')->mimeType($filePath))
-    //         ->header('Content-Disposition', "attachment; filename={$fileName}");
-    // }
-
     public function processCampaign(Request $request, $campaignId)
     {
         try {
             $campaign = Campaign::where('id', $campaignId)
                 ->where('user_id', $request->user()->id)
                 ->firstOrFail();
-
-            // Dispatch the job
+            $campaign->update(['status' => 'in_progress']);
             dispatch(new SendCampaignEmail($campaign, $request->user()->id));
 
             return response()->json([
